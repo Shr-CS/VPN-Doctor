@@ -35,9 +35,19 @@ try {
     [IO.File]::WriteAllText((Join-Path (Resolve-Path build) 'sample-report.html'),$html)
     $reportBox.DocumentText = $html
     Pump
-    $bitmap = [Drawing.Bitmap]::new($form.Width,$form.Height)
-    $form.DrawToBitmap($bitmap,[Drawing.Rectangle]::new(0,0,$form.Width,$form.Height))
-    $bitmap.Save((Join-Path (Resolve-Path build) 'workspace.png'),[Drawing.Imaging.ImageFormat]::Png)
-    $bitmap.Dispose()
+    $form.ActiveControl = $inputBox
+    $form.Refresh()
+    Pump
+    $doc = $reportBox.Document
+    $root = $doc.GetElementsByTagName('html')[0].DomElement
+    Write-Host "Report width: $($root.scrollWidth); client $($root.clientWidth)"
+    if ($root.scrollWidth -gt $root.clientWidth + 1) { throw 'Report overflow' }
+    $rect = $form.RectangleToScreen($form.ClientRectangle)
+    $bitmap = [Drawing.Bitmap]::new($rect.Width,$rect.Height)
+    $g = [Drawing.Graphics]::FromImage($bitmap)
+    try {
+        $g.CopyFromScreen($rect.Location,[Drawing.Point]::Empty,$rect.Size)
+        $bitmap.Save((Join-Path (Resolve-Path build) 'workspace.png'),[Drawing.Imaging.ImageFormat]::Png)
+    } finally { $g.Dispose(); $bitmap.Dispose() }
     Write-Host 'Desktop layout passed at minimum and default sizes.'
 } finally { $form.Dispose() }
