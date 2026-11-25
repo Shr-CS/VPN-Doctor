@@ -1138,8 +1138,8 @@ table{border-collapse:collapse;width:100%}td{vertical-align:top;border-bottom:1p
 
             // 事件
             btnAnalyze.Click += (s, e) => DoAnalyze();
-            btnSample.Click += (s, e) => { logInput.Text = SAMPLE_LOG; DoAnalyze(); };
-            btnClear.Click += (s, e) => { logInput.Text = ""; report.DocumentText = HtmlReport.Hint(); };
+            btnSample.Click += (s, e) => { logInput.Text = SAMPLE_LOG; statusLabel.Text = "示例日志"; DoAnalyze(); };
+            btnClear.Click += (s, e) => { logInput.Clear(); statusLabel.Text = "就绪"; report.DocumentText = HtmlReport.Hint(); };
             btnImport.Click += (s, e) => ImportFile();
             btnRescan.Click += (s, e) => AutoScan(true);
             btnSelectVpn.Click += (s, e) => SelectVpnExe();
@@ -1222,6 +1222,7 @@ table{border-collapse:collapse;width:100%}td{vertical-align:top;border-bottom:1p
                     {
                         using (var sr = new StreamReader(dlg.FileName, Encoding.UTF8, true))
                             logInput.Text = sr.ReadToEnd();
+                        statusLabel.Text = "已导入 " + dlg.FileName;
                         DoAnalyze();
                     }
                     catch (Exception ex)
@@ -1233,17 +1234,24 @@ table{border-collapse:collapse;width:100%}td{vertical-align:top;border-bottom:1p
         }
 
         // ======================= 自动扫描本机日志 =======================
+        void ShowSources(List<LogSource> sources)
+        {
+            logSources = sources;
+            comboLogs.Items.Clear();
+            comboLogs.Enabled = sources.Count > 0;
+            foreach (var source in sources) comboLogs.Items.Add(source);
+            if (sources.Count == 0) comboLogs.Items.Add("未找到本机日志");
+            comboLogs.SelectedIndex = 0;
+        }
+
         void AutoScan(bool manual)
         {
             var list = new List<LogSource>();
             foreach (var p in Profiles.All) ScanInto(p, list);
             list.Sort((a, b) => b.Modified.CompareTo(a.Modified));
-            logSources = list;
-            comboLogs.Items.Clear();
-            foreach (var ls in logSources) comboLogs.Items.Add(ls);
+            ShowSources(list);
             if (logSources.Count > 0)
             {
-                comboLogs.SelectedIndex = 0; // 触发 SelectedIndexChanged → 加载并诊断
                 statusLabel.Text = "已自动加载最新日志（共找到 " + logSources.Count + " 个日志文件）";
             }
             else
@@ -1297,12 +1305,9 @@ table{border-collapse:collapse;width:100%}td{vertical-align:top;border-bottom:1p
                 var found = new List<LogSource>();
                 ScanInto(prof, found);
                 found.Sort((a, b) => b.Modified.CompareTo(a.Modified));
-                logSources = found;
-                comboLogs.Items.Clear();
-                foreach (var ls in logSources) comboLogs.Items.Add(ls);
+                ShowSources(found);
                 if (logSources.Count > 0)
                 {
-                    comboLogs.SelectedIndex = 0;
                     statusLabel.Text += "，已加载最新日志";
                 }
                 else
