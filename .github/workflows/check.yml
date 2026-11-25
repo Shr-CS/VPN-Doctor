@@ -1,0 +1,24 @@
+name: Windows build and self-test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run self-tests
+        shell: powershell
+        run: ./build.ps1 -Test
+      - name: Upload executable and test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: VPN-Doctor-windows
+          path: build/

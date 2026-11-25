@@ -93,7 +93,8 @@ namespace OpenVPNDoctor
                 Id = "CERT_VERIFY_MISSING", Severity = "medium",
                 Title = "未启用服务器证书验证（存在中间人攻击风险）",
                 Patterns = new[] { @"No server certificate verification method has been enabled" },
-                Custom = (t, m) => m.IsConfig && !Regex.IsMatch(t, "remote-cert-tls", IC) && !Regex.IsMatch(t, "verify-x509-name", IC),
+                Custom = (t, m) => m.IsConfig && !Regex.IsMatch(t,
+                    @"^[ \t]*(?:remote-cert-tls[ \t]+server|verify-x509-name[ \t]+\S+)(?=[ \t\r\n]|$)", ICM),
                 Why = "客户端配置中没有 remote-cert-tls 或 verify-x509-name 选项，客户端不会验证服务器的身份。任何持有同一 CA 签发证书的人都可能冒充服务器，进行中间人（MITM）攻击，窃取你的 VPN 流量。",
                 Causes = new[] { "服务商导出的 .ovpn 配置文件没有包含 remote-cert-tls 选项" },
                 Fixes = new[]
@@ -374,27 +375,35 @@ namespace OpenVPNDoctor
         public static Meta GetMeta(string text)
         {
             var meta = new Meta();
-            var m = Regex.Match(text, @"(?:UDP|TCP) link remote:\s*\[AF_INET\]([\d.a-fA-F:]+):(\d+)", IC);
-            if (!m.Success) m = Regex.Match(text, @"remote address:\s*\[AF_INET\]([\d.a-fA-F:]+):(\d+)", IC);
+            const string endpoint = @"\[AF_INET6?\]\[?([\d.a-fA-F:]+)\]?:(\d+)";
+            var m = Regex.Match(text, @"(?:UDP|TCP)(?:v[46])? link remote:[ \t]*" + endpoint, IC);
+            if (!m.Success) m = Regex.Match(text, @"remote address:[ \t]*" + endpoint, IC);
             if (m.Success) { meta.Server = m.Groups[1].Value; meta.Port = m.Groups[2].Value; }
 
-            if (Regex.IsMatch(text, "UDP link remote", IC) || Regex.IsMatch(text, @"^\s*proto\s+udp", ICM)) meta.Proto = "UDP";
-            else if (Regex.IsMatch(text, "TCP link remote", IC) || Regex.IsMatch(text, "Attempting to establish TCP connection", IC) || Regex.IsMatch(text, @"^\s*proto\s+tcp", ICM)) meta.Proto = "TCP";
+            if (Regex.IsMatch(text, @"UDP(?:v[46])? link remote", IC)) meta.Proto = "UDP";
+            else if (Regex.IsMatch(text, @"TCP(?:v[46])? link remote|Attempting to establish TCP connection", IC)) meta.Proto = "TCP";
+            else
+            {
+                var proto = Regex.Match(text, @"^[ \t]*proto[ \t]+(udp[46]?|tcp[46]?(?:-client|-server)?)(?=[ \t\r\n]|$)", ICM);
+                if (proto.Success) meta.Proto = proto.Groups[1].Value.StartsWith("udp", StringComparison.OrdinalIgnoreCase) ? "UDP" : "TCP";
+            }
 
             meta.Restarts = Regex.Matches(text, "process restarting").Count;
 
-            meta.IsConfig = Regex.IsMatch(text, @"^\s*client\s*$", RegexOptions.Multiline)
-                || (Regex.IsMatch(text, @"^\s*remote\s+\S+\s+\d+", RegexOptions.Multiline)
-                    && Regex.IsMatch(text, @"^\s*(ca|cert|key)\s+\S+", RegexOptions.Multiline));
+            meta.IsConfig = Regex.IsMatch(text, @"^[ \t]*client[ \t]*(?:[#;][^\r\n]*)?\r?$", ICM)
+                || (Regex.IsMatch(text, @"^[ \t]*remote[ \t]+\S+[ \t]+\d+", ICM)
+                    && Regex.IsMatch(text, @"^[ \t]*(ca|cert|key)[ \t]+\S+", ICM));
             if (meta.IsConfig && meta.Server.Length == 0)
             {
-                var cm = Regex.Match(text, @"^\s*remote\s+(\S+)\s+(\d+)(?:\s+(\w+))?", RegexOptions.Multiline);
+                // 参数间只接受横向空白，不能把下一行 ca/cert/key 当作协议。
+                var cm = Regex.Match(text, @"^[ \t]*remote[ \t]+(\S+)[ \t]+(\d+)(?:[ \t]+(udp[46]?|tcp[46]?(?:-client|-server)?))?(?=[ \t\r\n]|$)", ICM);
                 if (cm.Success)
                 {
                     meta.Server = cm.Groups[1].Value;
                     meta.Port = cm.Groups[2].Value;
-                    if (cm.Groups[3].Success && meta.Proto.Length == 0)
-                        meta.Proto = Regex.Replace(cm.Groups[3].Value.ToUpper(), @"-.*$", "");
+                    // remote 的显式协议覆盖全局 proto；统一为主动检测使用的 TCP/UDP。
+                    if (cm.Groups[3].Success)
+                        meta.Proto = cm.Groups[3].Value.StartsWith("udp", StringComparison.OrdinalIgnoreCase) ? "UDP" : "TCP";
                 }
             }
             return meta;
@@ -1450,6 +1459,22 @@ namespace OpenVPNDoctor
             Assert(hasCert2, "配置缺 remote-cert-tls 应告警");
             Assert(hasCipher, "BF-CBC 弱算法应告警");
             Assert(r2.Meta.IsConfig, "识别为配置内容");
+
+            var noProto = Engine.GetMeta("client\r\nremote vpn.example.com 1194\r\nca ca.crt\r\n");
+            Assert(noProto.IsConfig && noProto.Server == "vpn.example.com" && noProto.Port == "1194", "CRLF 配置正确识别服务器");
+            Assert(noProto.Proto == "", "remote 未指定协议时不能吞入下一行 ca");
+            var remoteOverride = Engine.GetMeta("client\nproto udp\nremote vpn.example.com 443 tcp6\nca ca.crt\n");
+            Assert(remoteOverride.Proto == "TCP", "remote 的 tcp6 覆盖全局 udp 并归一化为 TCP");
+            var udp6 = Engine.GetMeta("client\nproto udp6\nremote vpn.example.com 1194\n");
+            Assert(udp6.Proto == "UDP", "全局 udp6 归一化为 UDP");
+            var ipv6 = Engine.GetMeta("UDPv6 link remote: [AF_INET6][2001:db8::1]:1194");
+            Assert(ipv6.Server == "2001:db8::1" && ipv6.Port == "1194" && ipv6.Proto == "UDP", "IPv6 日志识别地址、端口及协议");
+            var commented = Engine.Analyze("client\nremote vpn.example.com 443\n# remote-cert-tls server\n; verify-x509-name vpn.example.com name\n");
+            Assert(commented.Issues.Exists(i => i.Rule.Id == "CERT_VERIFY_MISSING"), "注释里的证书验证指令不能抑制告警");
+            var verified = Engine.Analyze("client\nremote vpn.example.com 443\nremote-cert-tls server\n");
+            Assert(!verified.Issues.Exists(i => i.Rule.Id == "CERT_VERIFY_MISSING"), "启用服务器证书验证后不误报");
+            var named = Engine.Analyze("client\nremote vpn.example.com 443\nverify-x509-name vpn.example.com name\n");
+            Assert(!named.Issues.Exists(i => i.Rule.Id == "CERT_VERIFY_MISSING"), "启用证书名称验证后不误报");
 
             var ok = Engine.Analyze("Wed Sep 16 17:01:25 2026 Initialization Sequence Completed");
             Assert(ok.Issues.Count == 0, "正常日志不应命中 (实际:" + ok.Issues.Count + ")");
