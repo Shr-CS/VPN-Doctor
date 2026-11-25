@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing
 $assembly = [Reflection.Assembly]::LoadFrom((Resolve-Path 'build/VPNDoctor.exe'))
 $form = [Activator]::CreateInstance($assembly.GetType('OpenVPNDoctor.MainForm'), $true)
