@@ -27,7 +27,12 @@ try {
     }
     # Render the built-in sample through the same report generator, without contacting a remote server.
     $sample = $form.GetType().GetField('SAMPLE_LOG', [Reflection.BindingFlags]'Static,NonPublic').GetValue($null)
-    $inputBox.Text = $sample
+    $form.GetType().GetMethod('SetLogText',$props).Invoke($form,@($sample))
+    if ($inputBox.Lines.Count -ne 11) { throw "Sample log lines: $($inputBox.Lines.Count)" }
+    $working = [Windows.Forms.Screen]::FromControl($form).WorkingArea
+    $form.Bounds = [Drawing.Rectangle]::new($working.X,$working.Y,[Math]::Min($working.Width,1196),[Math]::Min($working.Height,789))
+    (Field 'statusLabel').Text = '示例日志'
+    Pump
     $engine = $assembly.GetType('OpenVPNDoctor.Engine')
     $result = $engine.GetMethod('Analyze',[type[]]@([string])).Invoke($null,@($sample))
     $reportType = $assembly.GetType('OpenVPNDoctor.HtmlReport')
@@ -35,7 +40,8 @@ try {
     [IO.File]::WriteAllText((Join-Path (Resolve-Path build) 'sample-report.html'),$html)
     $reportBox.DocumentText = $html
     Pump
-    $form.ActiveControl = $inputBox
+    $form.ActiveControl = (Field 'btnAnalyze')
+    $inputBox.Select(0,0)
     $form.Refresh()
     Pump
     $doc = $reportBox.Document
