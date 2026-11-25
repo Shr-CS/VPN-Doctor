@@ -1048,6 +1048,7 @@ table{border-collapse:collapse;width:100%}td{vertical-align:top;border-bottom:1p
         Button btnAnalyze, btnImport, btnSample, btnClear, btnRescan, btnSelectVpn;
         ComboBox comboLogs;
         ToolStripStatusLabel statusLabel;
+        int analysisVersion;
         List<LogSource> logSources = new List<LogSource>();
         VpnProfile currentProfile = Profiles.OpenVpn;
 
@@ -1138,8 +1139,8 @@ table{border-collapse:collapse;width:100%}td{vertical-align:top;border-bottom:1p
 
             // 事件
             btnAnalyze.Click += (s, e) => DoAnalyze();
-            btnSample.Click += (s, e) => { logInput.Text = SAMPLE_LOG; statusLabel.Text = "示例日志"; DoAnalyze(); };
-            btnClear.Click += (s, e) => { logInput.Clear(); statusLabel.Text = "就绪"; report.DocumentText = HtmlReport.Hint(); };
+            btnSample.Click += (s, e) => { currentProfile = Profiles.OpenVpn; SetLogText(SAMPLE_LOG); statusLabel.Text = "示例日志"; DoAnalyze(); };
+            btnClear.Click += (s, e) => { analysisVersion++; btnAnalyze.Enabled = true; logInput.Clear(); statusLabel.Text = "就绪"; report.DocumentText = HtmlReport.Hint(); };
             btnImport.Click += (s, e) => ImportFile();
             btnRescan.Click += (s, e) => AutoScan(true);
             btnSelectVpn.Click += (s, e) => SelectVpnExe();
@@ -1180,12 +1181,20 @@ table{border-collapse:collapse;width:100%}td{vertical-align:top;border-bottom:1p
             return b;
         }
 
+        void SetLogText(string text)
+        {
+            logInput.Text = text.Replace("\r\n", "\n").Replace('\r', '\n').Replace("\n", Environment.NewLine);
+            logInput.Select(0, 0);
+        }
+
         void DoAnalyze()
         {
+            int version = ++analysisVersion;
             var text = logInput.Text;
             if (string.IsNullOrWhiteSpace(text))
             {
-                report.DocumentText = HtmlReport.Head() + "<div class=\"hint\">请先粘贴日志内容，或点击「导入日志文件…」/「载入示例日志」。</div></body></html>";
+                btnAnalyze.Enabled = true;
+                report.DocumentText = HtmlReport.Head() + "<div class=\"hint\">请先粘贴日志内容，或点击「导入文件…」或「载入示例」。</div></body></html>";
                 return;
             }
             var res = Engine.Analyze(text, currentProfile.Rules);
@@ -1200,6 +1209,7 @@ table{border-collapse:collapse;width:100%}td{vertical-align:top;border-bottom:1p
                 {
                     Invoke(new Action(delegate()
                     {
+                        if (version != analysisVersion) return;
                         report.DocumentText = HtmlReport.Render(res, checks, false);
                         btnAnalyze.Enabled = true;
                     }));
@@ -1221,7 +1231,7 @@ table{border-collapse:collapse;width:100%}td{vertical-align:top;border-bottom:1p
                     try
                     {
                         using (var sr = new StreamReader(dlg.FileName, Encoding.UTF8, true))
-                            logInput.Text = sr.ReadToEnd();
+                            SetLogText(sr.ReadToEnd());
                         statusLabel.Text = "已导入 " + dlg.FileName;
                         DoAnalyze();
                     }
@@ -1333,7 +1343,7 @@ table{border-collapse:collapse;width:100%}td{vertical-align:top;border-bottom:1p
                     if (cfg != null)
                         text += "\n\n# ===== 关联配置 " + cfgPath + " =====\n" + cfg;
                 }
-                logInput.Text = text;
+                SetLogText(text);
                 statusLabel.Text = "已加载: " + src.Path + "（" + src.Modified.ToString("yyyy-MM-dd HH:mm") + "）"
                     + "　特征库: " + currentProfile.Name
                     + (cfg != null ? "　+ 已关联配置交叉检查" : "");
