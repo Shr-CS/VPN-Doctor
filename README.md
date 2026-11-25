@@ -2,6 +2,10 @@
 
 Windows VPN 日志诊断助手，使用 C# 和 WinForms 编写。支持粘贴或导入日志、识别常见 VPN 客户端，并生成诊断建议与主动网络检查结果。
 
+在 Windows 上可直接运行 [VPN诊断助手.exe](./VPN诊断助手.exe)。在左栏载入示例或导入日志，右栏会列出发现的问题、对应的日志原文和处理建议。
+
+![VPN Doctor 使用示例日志生成的诊断报告](docs/workspace.png)
+
 ## 从源码构建
 
 在安装了 .NET Framework 4.x 的 Windows 上，打开 PowerShell：
@@ -18,8 +22,6 @@ Windows VPN 日志诊断助手，使用 C# 和 WinForms 编写。支持粘贴或
 ```
 
 测试结果写入 `build/selftest_result.txt`。测试包含规则命中、配置解析、IPv6 地址识别与证书验证设置检查；主动检测会访问校时服务并检查本机网络。GitHub Actions 在 Windows 上自动编译并运行同一组测试，构建产物可在对应 Actions 运行的 Artifacts 中下载。
-
-仓库根目录的 `VPN诊断助手.exe` 是原有预编译版本。源码修改后请使用 `build/` 中新生成的程序或下载对应提交的 Actions 构建产物。
 
 ## OpenVPN 配置解析
 
