@@ -17,6 +17,9 @@ jobs:
       - name: Compile and run self-tests
         shell: powershell
         run: ./build.ps1 -Test
+      - name: Check the desktop layout
+        shell: powershell
+        run: ./.github/qa/layout.ps1
       - name: Upload executable and test results
         uses: actions/upload-artifact@v4
         with:
