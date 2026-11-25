@@ -923,28 +923,25 @@ namespace OpenVPNDoctor
 
         public static string Head()
         {
-            return "<!DOCTYPE html><html><head><meta http-equiv=\"x-ua-compatible\" content=\"IE=11\"><meta charset=\"utf-8\"><style>"
-                + "body{font-family:'Microsoft YaHei',Tahoma,sans-serif;background:#f3f5f7;color:#222;font-size:13px;}"
-                + ".summary{background:#fff;border:1px solid #ddd;border-left:4px solid #2b6cb0;padding:10px 14px;margin-bottom:12px;border-radius:4px;line-height:1.8;}"
-                + ".card{background:#fff;border:1px solid #e1e6eb;border-radius:6px;margin-bottom:12px;}"
-                + ".card .head{padding:10px 14px;font-weight:bold;font-size:14px;border-bottom:1px solid #eee;}"
-                + ".card .body{padding:10px 14px;line-height:1.7;}"
-                + ".badge{display:inline-block;font-size:12px;color:#fff;border-radius:3px;padding:1px 8px;margin-right:8px;}"
-                + ".sev-high .head{background:#fdecea;}.sev-high .badge{background:#d64541;}"
-                + ".sev-medium .head{background:#fff7e6;}.sev-medium .badge{background:#e8a13d;}"
-                + ".sev-low .head{background:#eef4fb;}.sev-low .badge{background:#4a90d9;}"
-                + ".sev-info .head{background:#eef9f0;}.sev-info .badge{background:#4caf6d;}"
-                + "h4{margin:10px 0 4px 0;font-size:13px;color:#1f3b57;}"
-                + "ul{margin:4px 0 8px 0;padding-left:22px;} li{margin:3px 0;}"
-                + "pre{background:#f6f8fa;border:1px solid #e1e6eb;border-radius:4px;padding:8px 10px;font-family:Consolas,monospace;font-size:12px;}"
-                + ".logline{background:#fffdf5;border:1px dashed #e0c97f;padding:6px 8px;font-family:Consolas,monospace;font-size:12px;margin:6px 0;word-break:break-all;}"
-                + ".hint{color:#8895a2;padding:10px;}"
-                + "</style></head><body>";
+            return @"<!DOCTYPE html><html lang='zh-CN'><head><meta http-equiv='X-UA-Compatible' content='IE=edge'><meta charset='utf-8'><style>
+*{box-sizing:border-box}body{margin:0;padding:2px 6px 12px 0;font:14px/1.7 'Microsoft YaHei UI','Microsoft YaHei',sans-serif;color:#192f40;background:#edf2f5;word-wrap:break-word}
+.summary,.card,.hint{background:#fff;border:1px solid #c5d4dc;border-radius:6px;margin:0 0 12px}
+.summary{background:#173447;color:#f5fafb;padding:16px 20px}.summary h2,.hint h2{font-size:20px;line-height:1.4;margin:0 0 8px}
+.counts{font-size:13px;color:#c6e2e8}.meta{border-top:1px solid #456170;padding-top:8px;margin-top:10px;color:#d4e7ec}
+.head{padding:10px 16px;font-weight:bold;font-size:15px;border-bottom:1px solid #dce5ea}
+.body{padding:12px 16px}.badge{display:inline-block;vertical-align:middle;font-size:12px;line-height:20px;padding:0 7px;border-radius:3px;margin-right:8px}
+.sev-high .badge,.fail{background:#f9deda;color:#832d2a}.sev-medium .badge,.warn{background:#faebcc;color:#744a11}
+.sev-low .badge,.info{background:#e0ebf7;color:#254e73}.sev-info .badge,.ok{background:#d8eee6;color:#205b4a}
+h4{font-size:14px;margin:15px 0 3px;color:#254f62}ul{margin:4px 0;padding-left:21px}li{margin:3px 0}
+pre,.logline{white-space:pre-wrap;word-wrap:break-word;background:#f2f6f8;border-left:3px solid #75919e;padding:8px 12px;font:13px/1.6 Consolas,monospace}
+.hint{padding:26px 20px;border-top:3px solid #247687;color:#435e6b}.hint h2{color:#173447}.hint p{margin:4px 0}kbd{font:12px Consolas,monospace;background:#edf2f5;padding:3px 5px}
+table{border-collapse:collapse;width:100%}td{vertical-align:top;border-bottom:1px solid #dce5ea;padding:8px 4px}td:first-child{width:36%}.advice{color:#755015}
+</style></head><body>";
         }
 
         public static string Hint()
         {
-            return Head() + "<div class=\"hint\">诊断结果将显示在这里。提示：Ctrl+Enter 可快速开始诊断。</div></body></html>";
+            return Head() + "<div class=\"hint\"><h2>等待诊断</h2><p>粘贴或导入日志后，点击「开始诊断」或按 <kbd>Ctrl + Enter</kbd>。</p></div></body></html>";
         }
 
         public static string Render(Result res, List<CheckResult> checks, bool checking)
@@ -960,35 +957,34 @@ namespace OpenVPNDoctor
                 else nl++;
             }
 
-            sb.Append("<div class=\"summary\"><b>诊断摘要：</b>共发现 <b>").Append(issues.Count)
-              .Append("</b> 类问题（严重 ").Append(nh).Append(" / 警告 ").Append(nm).Append(" / 提示 ").Append(nl).Append("）");
+            sb.Append("<div class='summary'><h2>").Append(issues.Count == 0 ? "未发现已知故障" : "发现 " + issues.Count + " 类问题")
+              .Append("</h2><div class='counts'>严重 ").Append(nh).Append(" &nbsp; / &nbsp; 警告 ").Append(nm)
+              .Append(" &nbsp; / &nbsp; 提示 ").Append(nl).Append("</div>");
             var bits = new List<string>();
             if (meta.Proto.Length > 0) bits.Add("协议：" + meta.Proto);
             if (meta.Server.Length > 0) bits.Add("服务器：" + meta.Server + (meta.Port.Length > 0 ? ":" + meta.Port : ""));
             if (meta.Restarts > 0) bits.Add("自动重启重试：" + meta.Restarts + " 次（持续性故障，非偶发抖动）");
             if (meta.IsConfig) bits.Add("检测到配置内容，已做交叉检查");
-            if (bits.Count > 0) sb.Append("<br>").Append(string.Join("　|　", bits.ToArray()));
+            if (bits.Count > 0) sb.Append("<div class='meta'>").Append(Esc(string.Join("　·　", bits.ToArray()))).Append("</div>");
             sb.Append("</div>");
 
             // 主动检测结果卡片
             if (checking)
             {
-                sb.Append("<div class=\"card\"><div class=\"head\" style=\"background:#eef1f5;\">主动检测</div>")
-                  .Append("<div class=\"body\"><span style=\"color:#8895a2;\">正在进行本机与网络探测（网卡 / 进程 / 系统时间 / DNS / 端口连通性）…</span></div></div>");
+                sb.Append("<div class=\"card\"><div class=\"head\">主动检测</div>")
+                  .Append("<div class=\"body\"><span>正在进行本机与网络探测（网卡 / 进程 / 系统时间 / DNS / 端口连通性）…</span></div></div>");
             }
             else if (checks != null && checks.Count > 0)
             {
-                sb.Append("<div class=\"card\"><div class=\"head\" style=\"background:#eef1f5;\">主动检测结果</div>")
-                  .Append("<div class=\"body\"><table style=\"border-collapse:collapse;width:100%;font-size:13px;\">");
+                sb.Append("<div class=\"card\"><div class=\"head\">主动检测结果</div>")
+                  .Append("<div class=\"body\"><table>");
                 foreach (var c in checks)
                 {
-                    string color = c.Status == "ok" ? "#4caf6d" : c.Status == "warn" ? "#e8a13d" : c.Status == "fail" ? "#d64541" : "#4a90d9";
                     string label = c.Status == "ok" ? "正常" : c.Status == "warn" ? "注意" : c.Status == "fail" ? "异常" : "信息";
-                    sb.Append("<tr><td style=\"padding:6px 8px;border-bottom:1px solid #eee;white-space:nowrap;\"><span class=\"badge\" style=\"background:")
-                      .Append(color).Append(";\">").Append(label).Append("</span>").Append(Esc(c.Name)).Append("</td>")
-                      .Append("<td style=\"padding:6px 8px;border-bottom:1px solid #eee;\">").Append(Esc(c.Detail));
+                    sb.Append("<tr><td><span class='badge ").Append(Esc(c.Status)).Append("'>").Append(label)
+                      .Append("</span>").Append(Esc(c.Name)).Append("</td><td>").Append(Esc(c.Detail));
                     if (!string.IsNullOrEmpty(c.Advice))
-                        sb.Append("<br><span style=\"color:#b26a00;\">建议：").Append(Esc(c.Advice)).Append("</span>");
+                        sb.Append("<br><span class='advice'>建议：").Append(Esc(c.Advice)).Append("</span>");
                     sb.Append("</td></tr>");
                 }
                 sb.Append("</table></div></div>");
@@ -1070,94 +1066,75 @@ namespace OpenVPNDoctor
 
         public MainForm()
         {
-            Text = "VPN 诊断助手（通用版）";
-            Width = 1180; Height = 780;
+            Text = "VPN Doctor · 连接诊断助手";
+            ClientSize = new Size(1180, 750);
+            MinimumSize = new Size(900, 600);
             StartPosition = FormStartPosition.CenterScreen;
-            Font = new Font("Microsoft YaHei", 9f);
+            Font = new Font("Microsoft YaHei UI", 9f);
+            BackColor = Canvas;
 
-            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4 };
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 34));
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 66));
+            var root = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, ColumnCount = 1 };
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             Controls.Add(root);
 
-            // 头部
-            var header = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(31, 59, 87) };
-            var title = new Label
-            {
-                Text = "VPN 连接诊断助手（通用版）",
-                ForeColor = Color.White,
-                Font = new Font("Microsoft YaHei", 14f, FontStyle.Bold),
-                AutoSize = true,
-                Location = new Point(16, 10)
-            };
-            var sub = new Label
-            {
-                Text = "支持 OpenVPN / WireGuard / Clash / Shadowsocks / V2Ray 等：自动扫描日志，或点「选择VPN程序…」自动识别并定位日志",
-                ForeColor = Color.FromArgb(200, 214, 229),
-                AutoSize = true,
-                Location = new Point(18, 38)
-            };
-            header.Controls.Add(title);
-            header.Controls.Add(sub);
+            var header = new FlowLayoutPanel { Dock = DockStyle.Fill, BackColor = Ink, Margin = Padding.Empty,
+                Padding = new Padding(20, 16, 16, 10), WrapContents = false };
+            header.Controls.Add(new Label { Text = "VPN Doctor", AutoSize = true, ForeColor = Color.White,
+                Font = new Font("Segoe UI", 19f, FontStyle.Bold), Margin = new Padding(0, 0, 16, 0) });
+            header.Controls.Add(new Label { Text = "连接诊断助手", AutoSize = true, ForeColor = Color.FromArgb(187, 221, 226),
+                Font = new Font(Font.FontFamily, 11f), Margin = new Padding(0, 10, 0, 0) });
             root.Controls.Add(header, 0, 0);
 
-            // 工具栏
-            var toolbar = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
-            btnSelectVpn = MakeButton("选择VPN程序…", 12, false);
-            btnAnalyze = MakeButton("开始诊断", 130, true);
-            btnImport = MakeButton("导入日志文件…", 236, false);
-            btnSample = MakeButton("载入示例日志", 354, false);
-            btnClear = MakeButton("清空", 472, false);
-            btnRescan = MakeButton("重新扫描", 550, false);
-            var lblSrc = new Label
-            {
-                Text = "日志来源:",
-                AutoSize = true,
-                Location = new Point(670, 14),
-                ForeColor = Color.FromArgb(60, 60, 60)
-            };
-            comboLogs = new ComboBox
-            {
-                Location = new Point(742, 10),
-                Width = 410,
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-            toolbar.Controls.AddRange(new Control[] { btnSelectVpn, btnAnalyze, btnImport, btnSample, btnClear, btnRescan, lblSrc, comboLogs });
-            root.Controls.Add(toolbar, 0, 1);
+            var workspace = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
+                Padding = new Padding(12), Margin = Padding.Empty };
+            workspace.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
+            workspace.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
+            workspace.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            root.Controls.Add(workspace, 0, 1);
 
-            // 输入区
-            var inputWrap = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12, 8, 12, 4) };
-            logInput = new TextBox
-            {
-                Multiline = true,
-                ScrollBars = ScrollBars.Vertical,
-                Dock = DockStyle.Fill,
-                Font = new Font("Consolas", 9.5f),
-                AcceptsReturn = true,
-                AcceptsTab = true
-            };
-            inputWrap.Controls.Add(logInput);
-            root.Controls.Add(inputWrap, 0, 2);
+            var input = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = Color.White, ColumnCount = 1, RowCount = 7,
+                Margin = new Padding(0, 0, 6, 0), Padding = new Padding(14) };
+            input.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            for (int i = 0; i < 7; i++)
+                input.RowStyles.Add(i == 5 ? new RowStyle(SizeType.Percent, 100) : new RowStyle(SizeType.AutoSize));
+            workspace.Controls.Add(input, 0, 0);
 
-            // 报告区
-            var reportWrap = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12, 4, 12, 12) };
-            report = new WebBrowser
-            {
-                Dock = DockStyle.Fill,
-                ScriptErrorsSuppressed = true,
-                IsWebBrowserContextMenuEnabled = false,
-                AllowWebBrowserDrop = false
-            };
-            reportWrap.Controls.Add(report);
-            root.Controls.Add(reportWrap, 0, 3);
+            input.Controls.Add(SectionTitle("日志来源"), 0, 0);
+            comboLogs = new ComboBox { Dock = DockStyle.Fill, AccessibleName = "日志来源", DropDownStyle = ComboBoxStyle.DropDownList };
+            input.Controls.Add(comboLogs, 0, 1);
+            btnRescan = MakeButton("重新扫描", false);
+            btnSelectVpn = MakeButton("选择 VPN 程序…", false);
+            input.Controls.Add(ActionRow(btnRescan, btnSelectVpn), 0, 2);
+            input.Controls.Add(SectionTitle("日志内容"), 0, 3);
+            btnImport = MakeButton("导入文件…", false);
+            btnSample = MakeButton("载入示例", false);
+            btnClear = MakeButton("清空", false);
+            input.Controls.Add(ActionRow(btnImport, btnSample, btnClear), 0, 4);
+            logInput = new TextBox { Dock = DockStyle.Fill, Multiline = true, ScrollBars = ScrollBars.Vertical,
+                AccessibleName = "日志内容", AcceptsReturn = true, Font = new Font("Consolas", 10f),
+                BackColor = Ink, ForeColor = Color.FromArgb(224, 239, 241), BorderStyle = BorderStyle.FixedSingle,
+                Margin = new Padding(3, 4, 3, 10) };
+            input.Controls.Add(logInput, 0, 5);
+            btnAnalyze = MakeButton("开始诊断", true);
+            btnAnalyze.Dock = DockStyle.Fill;
+            input.Controls.Add(btnAnalyze, 0, 6);
 
-            // 状态栏
-            var status = new StatusStrip();
+            var results = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2,
+                Margin = new Padding(6, 0, 0, 0) };
+            results.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            results.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            results.Controls.Add(SectionTitle("诊断报告"), 0, 0);
+            report = new WebBrowser { Dock = DockStyle.Fill, AccessibleName = "诊断报告",
+                Margin = Padding.Empty, ScriptErrorsSuppressed = true, IsWebBrowserContextMenuEnabled = false, AllowWebBrowserDrop = false };
+            results.Controls.Add(report, 0, 1);
+            workspace.Controls.Add(results, 1, 0);
+
+            var status = new StatusStrip { Dock = DockStyle.Fill, BackColor = Color.White, ForeColor = Ink };
             statusLabel = new ToolStripStatusLabel("就绪") { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
             status.Items.Add(statusLabel);
-            Controls.Add(status);
+            root.Controls.Add(status, 0, 2);
 
             // 事件
             btnAnalyze.Click += (s, e) => DoAnalyze();
@@ -1176,21 +1153,30 @@ namespace OpenVPNDoctor
             Shown += (s, e) => { report.DocumentText = HtmlReport.Hint(); AutoScan(false); };
         }
 
-        Button MakeButton(string text, int x, bool primary)
+        static readonly Color Ink = Color.FromArgb(23, 52, 71);
+        static readonly Color Canvas = Color.FromArgb(237, 242, 245);
+        static readonly Color Accent = Color.FromArgb(19, 99, 111);
+
+        Label SectionTitle(string title)
         {
-            var b = new Button
-            {
-                Text = text,
-                Location = new Point(x, 8),
-                Size = new Size(primary ? 100 : (text.Length > 3 ? 112 : 72), 30),
-                FlatStyle = FlatStyle.Flat
-            };
-            if (primary)
-            {
-                b.BackColor = Color.FromArgb(43, 108, 176);
-                b.ForeColor = Color.White;
-                b.FlatAppearance.BorderColor = Color.FromArgb(43, 108, 176);
-            }
+            return new Label { Text = title, AutoSize = true, ForeColor = Ink, Font = new Font(Font.FontFamily, 12f, FontStyle.Bold),
+                Margin = new Padding(2, 5, 2, 8) };
+        }
+
+        FlowLayoutPanel ActionRow(params Button[] buttons)
+        {
+            var row = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, Margin = Padding.Empty, WrapContents = true };
+            row.Controls.AddRange(buttons);
+            return row;
+        }
+
+        Button MakeButton(string text, bool primary)
+        {
+            var b = new Button { Text = text, AutoSize = true, MinimumSize = new Size(0, 33), Padding = new Padding(8, 3, 8, 3),
+                FlatStyle = FlatStyle.Flat, BackColor = primary ? Accent : Color.White, ForeColor = primary ? Color.White : Ink,
+                Margin = new Padding(3, 3, 4, 5), UseVisualStyleBackColor = false };
+            b.FlatAppearance.BorderColor = primary ? Accent : Color.FromArgb(166, 188, 199);
+            b.FlatAppearance.MouseOverBackColor = primary ? Color.FromArgb(15, 80, 90) : Canvas;
             return b;
         }
 
